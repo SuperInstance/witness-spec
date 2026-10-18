@@ -21,17 +21,25 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 cp -r "$ROOT/ref" "$ROOT/test" "$ROOT/conformance" "$WORK/" 2>/dev/null
 cd "$WORK"
-PASS=0; FAIL=0
+HOLE=0; OK=0
+# expect_fail=1 for a MUTATION: the suite MUST notice.
+# expect_fail=0 for the baseline: the suite MUST be clean.
 run() {
-  local label="$1" out
+  local label="$1" expect_fail="${2:-1}" out fails
   out=$(node --test "test/*.test.mjs" 2>&1 | grep -E "^# (pass|fail)" | tr '\n' ' ')
+  fails=$(echo "$out" | sed -n 's/.*# fail \([0-9]*\).*/\1/p')
   printf "  %-52s %s\n" "$label" "$out"
-  case "$out" in *"# fail 0"*) echo "     ^^ HOLE: the suite did not notice"; PASS=$((PASS+1)) ;;
-                  *) FAIL=$((FAIL+1)) ;; esac
+  if [ "$expect_fail" = "1" ] && [ "${fails:-0}" -gt 0 ]; then
+    echo "     caught"; OK=$((OK+1))
+  elif [ "$expect_fail" = "0" ] && [ "${fails:-1}" -eq 0 ]; then
+    echo "     clean, as it must be"; OK=$((OK+1))
+  else
+    echo "     ^^ WRONG: a mutation must be caught, and an unmutated tree must be clean"; HOLE=$((HOLE+1))
+  fi
 }
 restore() { cp "$ROOT/ref/jcs.mjs" "$WORK/ref/jcs.mjs"; cp "$ROOT/ref/chain.mjs" "$WORK/ref/chain.mjs"; }
 
-run "baseline (unmutated) -- expect 0 failures"
+run "baseline (unmutated) -- expect 0 failures" 0
 
 python3 - <<'PY'
 p='ref/jcs.mjs'; s=open(p).read()
@@ -70,10 +78,11 @@ open(p,'w').write(s)
 PY
 run "M5: the node uses the leaf prefix"; restore
 
-run "restored -- expect 0 failures"
+run "restored -- expect 0 failures" 0
 echo
-if [ "$PASS" -gt 0 ]; then
-  echo "  $PASS HOLE(S) -- a mutation broke nothing. The suite is not load-bearing."
+if [ "$HOLE" -gt 0 ]; then
+  echo "  $HOLE WRONG OUTCOME(S) -- a mutation went unnoticed, or a clean tree failed."
   exit 1
 fi
-echo "  every mutation was caught. The suite can fail."
+echo "  all $OK expectations met: every mutation was caught, and the unmutated tree is clean."
+echo "  The suite can fail."
