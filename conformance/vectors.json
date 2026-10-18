@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-18T15:53:17.133Z",
+  "at": "2026-10-18T21:58:33.917Z",
   "spec": "witness-chain/1 -- JCS (RFC 8785) canonicalisation, RFC 6962 domain separation, SHA-256 chain, HMAC-SHA256 signed head",
   "genesis": "0x0000000000000000",
   "key": "612d6b65792d7468652d6c6f672d7772697465722d646f65732d6e6f742d686f6c64",
