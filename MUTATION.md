@@ -32,6 +32,13 @@ a conformance suite.** These vectors come from the specification.
 `tools/mutate.sh` breaks the implementation in specific ways and asserts the
 suite notices.
 
+**IT WORKS ON A COPY. Always.** The first version mutated the working tree
+in place, and a killed run left the tree MUTATED -- and a later commit
+pushed the broken implementation. **A verification harness that can break
+the thing it verifies is itself a defect.** It now copies `ref/`, `test/`
+and `conformance/` into a temp directory, mutates the copy, and throws the
+copy away.
+
 | mutation | before the fix | after |
 |---|---|---|
 | baseline | 0 fail | 0 fail |
