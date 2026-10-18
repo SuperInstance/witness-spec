@@ -12,8 +12,7 @@ RFC 8785 itself**:
   `😀` / `\u0080` / `ö` object and its expected property order)
 - **§3.2.2** — the primitive-serialization example (the numbers array and
   the escaped string)
-- **Appendix B** — the number serialization samples, all 15, including
-  `5e-324`, `1.7976931348623157e+308`, `295147905179352830000` and `1e+21`
+- **Appendix B** — the number serialization samples, **all 24**
 
 **A conformance suite that only tests itself against its own author is not
 a conformance suite.** These vectors come from the specification.
@@ -23,7 +22,7 @@ a conformance suite.** These vectors come from the specification.
 | implementation | where | RFC 8785 sort | Appendix B (15) | §3.2.2 string |
 |---|---|---|---|---|
 | `ref/jcs.mjs` | this repo | MATCH | ALL MATCH | MATCH |
-| `ref/jcs.py` | this repo | MATCH | ALL MATCH | MATCH |
+| `ref/jcs.py` | this repo | MATCH | **ALL 24 MATCH** (after the fix below) | MATCH |
 | `AI-Writings/labs/situation-recorder/recorder.py` | the fleet's reference witness | MATCH | ALL MATCH | MATCH |
 | `SuperInstance/quilt-claw/witness/ledger.js` | the JS twin | *(not yet ported)* | | |
 
@@ -94,3 +93,40 @@ of its own findings were real.
 node --test "test/*.test.mjs"     # 11 tests
 tools/mutate.sh                   # every mutation must be caught
 ```
+
+
+---
+
+## The hole this repo had in itself
+
+**The first version of this repo listed 15 of RFC 8785's 24 Appendix B
+number samples. The three it happened to drop were EXACTLY the three the
+Python implementation failed.**
+
+That is the fleet's own defect class reproduced in the file whose entire job
+is to be the standard: *a green badge over a truncated test set.* The
+generator (`gen_vectors.mjs`) intended to include `1.0` and `-0`, but
+`JSON.stringify` writes them as `1` and `0` — **the generator erased, by
+construction, the inputs that would have caught the divergence it existed
+to catch.**
+
+**The Python implementation was genuinely wrong, and here is the whole of
+it:** it formatted numbers with Python's `repr()`. That is not ECMAScript's
+`Number::toString`. Six samples failed:
+
+| sample | the bug |
+|---|---|
+| `295147905179352830000` | the shortest round-trip digits of a large integer are **not** the exact integer value (the double is exactly 295147905179352825856) |
+| `999999999999999700000` | same |
+| `999999999999999900000` | same |
+| `9.999999999999997e-7` | an exponent has **no leading zero** |
+| `1e-6` | the plain-decimal band is `-6 < n <= 21`, so it prints `0.000001` |
+| `-0.0000033333333333333333` | same band rule |
+
+`ref/jcs.py` now implements ECMA-262 6.1.6.1.20 (Number::toString) properly,
+and `test/completeness.test.mjs` asserts the vector list **by count, by the
+RFC's own hex representations, and by a digest** — so a future truncation
+breaks the build instead of hiding behind it.
+
+**The lesson is the one this whole fleet keeps learning: a suite that only
+tests what it already passes is decoration.**

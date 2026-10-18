@@ -24,6 +24,17 @@ jobs:
           from chain import append, verify, sign_head, verify_head, GENESIS
           from jcs import canonicalize
           v = json.load(open('../conformance/vectors.json'))
+          # AND the COMPLETE RFC 8785 Appendix B, all 24 samples.
+          # The first version of this repo listed 15 of the 24, and the
+          # three it happened to drop were exactly the ones the Python
+          # implementation failed. A conformance suite that omits the
+          # cases it fails is not a conformance suite.
+          rfc = json.load(open('../conformance/rfc8785-vectors.json'))['rfc8785']
+          assert len(rfc['numbers']) == 24, ('the vector file must carry the COMPLETE '
+              'Appendix B (24 samples), not a selection')
+          bad = [s['hex'] for s in rfc['numbers'] if canonicalize(s['value']) != s['canonical']]
+          assert not bad, 'python JCS disagrees with RFC 8785 Appendix B at: ' + ', '.join(bad)
+          print('python JCS matches all %d RFC 8785 Appendix B samples' % len(rfc['numbers']))
           st = {'prev': GENESIS, 'records': []}
           for vec in v['vectors']:
               assert canonicalize(vec['record']) == vec['canonical'], 'canonical mismatch at ' + str(vec['record'].get('sid'))
