@@ -15,7 +15,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { canonicalize } from '../ref/jcs.mjs';
-import { append, verify, signHead, verifyHead, leafHash, chainHash, GENESIS } from '../ref/chain.mjs';
+import { append, verify, signHead, verifyHead, leafHash, chainHash, GENESIS, LEAF_PREFIX, NODE_PREFIX } from '../ref/chain.mjs';
+import { createHash } from 'node:crypto';
 
 const KEY = Buffer.from('a-key-the-log-writer-does-not-hold');
 const log = [
@@ -64,15 +65,35 @@ test('the house\'s un-anchored chain has no tamper-evidence at all', () => {
   assert.equal(typeof st.head, 'string', 'but it does have a head, which is what gets signed');
 });
 
-test('domain separation: a leaf is not a node', () => {
-  // RFC 6962 2.1. Without the 0x00/0x01 prefixes, a leaf's bytes can be
-  // presented as a node.
+test('domain separation: the PREFIXES differ, and the implementation uses them', () => {
+  // RFC 6962 2.1. A leaf hashes with a 0x00 prefix, a node with 0x01.
+  //
+  // The PREVIOUS version of this test compared leafHash(body) with
+  // chainHash(GENESIS, leaf) and asserted they differ. That test COULD NOT
+  // FAIL: the two calls have different inputs, so they differ whatever the
+  // prefixes are. A mutation test caught it -- changing LEAF_PREFIX to 0x01
+  // (so leaf and node would COLLIDE) broke nothing in the suite.
+  //
+  // The test below asserts the PREFIXES and, more importantly, asserts the
+  // implementation's OUTPUT against an independently-computed hash. If the
+  // prefix changes, this fails.
+  assert.notEqual(LEAF_PREFIX.toString('hex'), NODE_PREFIX.toString('hex'),
+    'the leaf and node prefixes must differ');
+  assert.equal(LEAF_PREFIX[0], 0x00, 'RFC 6962 2.1: leaf prefix is 0x00');
+  assert.equal(NODE_PREFIX[0], 0x01, 'RFC 6962 2.1: node prefix is 0x01');
+
   const body = { a: 1 };
-  const leaf = leafHash(body);
-  const node = chainHash(GENESIS, leaf);
-  assert.notEqual(leaf, node);
-  // and the prefixes are what make them differ, not the content
-  assert.notEqual(leaf, chainHash(GENESIS, leaf));
+  const canon = canonicalize(body);
+  const expectedLeaf = '0x' + createHash('sha256')
+    .update(Buffer.from([0x00])).update(canon, 'utf8').digest('hex');
+  assert.equal(leafHash(body), expectedLeaf,
+    'leafHash must be SHA256(0x00 || JCS(body))');
+
+  const prev = GENESIS, leaf = expectedLeaf;
+  const expectedNode = '0x' + createHash('sha256')
+    .update(Buffer.from([0x01])).update(prev, 'utf8').update(leaf, 'utf8').digest('hex');
+  assert.equal(chainHash(prev, leaf), expectedNode,
+    'chainHash must be SHA256(0x01 || prev || leaf)');
 });
 
 test('JCS is byte-identical to the ECMAScript reference for these vectors', () => {

@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-18",
+  "spec": "witness-chain/1 -- JCS (RFC 8785) canonicalisation, RFC 6962 domain separation, SHA-256 chain, HMAC-SHA256 signed head",
+  "note": "Includes the vectors PUBLISHED IN RFC 8785 ITSELF, not only our own. A conformance suite that only tests itself against its own author is not a conformance suite.",
+  "rfc8785": {
+    "source": "RFC 8785 sections 3.2.2, 3.2.3 and Appendix B (number serialization samples)",
+    "sort_test_data": {
+      "€": "Euro Sign",
+      "\r": "Carriage Return",
+      "דּ": "Hebrew Letter Dalet With Dagesh",
+      "1": "One",
+      "😀": "Emoji: Grinning Face",
+      "": "Control",
+      "ö": "Latin Small Letter O With Diaeresis"
+    },
+    "sort_expected_order": [
+      "Carriage Return",
+      "One",
+      "Control",
+      "Latin Small Letter O With Diaeresis",
+      "Euro Sign",
+      "Emoji: Grinning Face",
+      "Hebrew Letter Dalet With Dagesh"
+    ],
+    "numbers": [
+      {
+        "value": 0,
+        "canonical": "0"
+      },
+      {
+        "value": -0.0,
+        "canonical": "0"
+      },
+      {
+        "value": 5e-324,
+        "canonical": "5e-324"
+      },
+      {
+        "value": -5e-324,
+        "canonical": "-5e-324"
+      },
+      {
+        "value": 1.7976931348623157e+308,
+        "canonical": "1.7976931348623157e+308"
+      },
+      {
+        "value": -1.7976931348623157e+308,
+        "canonical": "-1.7976931348623157e+308"
+      },
+      {
+        "value": 9007199254740992,
+        "canonical": "9007199254740992"
+      },
+      {
+        "value": -9007199254740992,
+        "canonical": "-9007199254740992"
+      },
+      {
+        "value": 295147905179352830000,
+        "canonical": "295147905179352830000"
+      },
+      {
+        "value": 9.999999999999997e+22,
+        "canonical": "9.999999999999997e+22"
+      },
+      {
+        "value": 1e+23,
+        "canonical": "1e+23"
+      },
+      {
+        "value": 1.0000000000000001e+23,
+        "canonical": "1.0000000000000001e+23"
+      },
+      {
+        "value": 999999999999999700000,
+        "canonical": "999999999999999700000"
+      },
+      {
+        "value": 999999999999999900000,
+        "canonical": "999999999999999900000"
+      },
+      {
+        "value": 1e+21,
+        "canonical": "1e+21"
+      }
+    ],
+    "string_test": {
+      "input": "€$\u000f\nA'B\"\\\"\\/",
+      "note": "the 3.2.2 primitive-serialization example; the canonical form must equal JSON.stringify's for a single key"
+    }
+  }
+}

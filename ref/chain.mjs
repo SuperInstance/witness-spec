@@ -36,7 +36,7 @@ export function leafHash(record) {
 
 export function chainHash(prev, leaf) {
   return '0x' + createHash('sha256')
-    .update(NODE_PREFIX)
+    .update(LEAF_PREFIX)
     .update(prev, 'utf8')
     .update(leaf, 'utf8')
     .digest('hex');
