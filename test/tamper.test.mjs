@@ -9,8 +9,14 @@
 // does not hold. The rewrite changes the head; the head's signature no
 // longer matches.
 //
-// This test is the difference between a claim and a demonstration, and it
-// is the reason the house's witness machine is not tamper-evident today.
+// The SECOND attack, cheaper and simpler, is TRUNCATION: delete the tail.
+// A truncated chain is a SHORTER VALID CHAIN, so verify() cannot see it and
+// needs no competence to be defeated. Only an external anchor catches it --
+// and only if that anchor is PUBLISHED where the log writer cannot reach it.
+//
+// These tests are the difference between a claim and a demonstration, and
+// they are the reason the house's witness machine is ATTESTABLE today rather
+// than tamper-evident.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -63,6 +69,39 @@ test('the house\'s un-anchored chain has no tamper-evidence at all', () => {
   const st = build(log);
   assert.equal('signature' in st, false, 'a bare chain has no signature');
   assert.equal(typeof st.head, 'string', 'but it does have a head, which is what gets signed');
+});
+
+test('TRUNCATION: a tail-truncated chain STILL VERIFIES -- replay cannot see it', () => {
+  // The attack that needs no re-hashing at all. Cut the last record off and
+  // every surviving linkage is intact, because a prefix of a valid chain IS
+  // a valid chain. This is the measurement behind the claim that "chain
+  // intact" is not producible for an unanchored log.
+  const full = build(log);
+  const kept = full.records.slice(0, -1);
+  const truncated = { prev: kept.at(-1).hash, records: kept, head: kept.at(-1).hash };
+
+  assert.equal(verify(full).ok, true, 'the full chain verifies');
+  assert.equal(truncated.records.length, full.records.length - 1, 'a record really was dropped');
+  assert.equal(
+    verify(truncated).ok,
+    true,
+    'AND THE TRUNCATED CHAIN STILL VERIFIES -- replay alone cannot detect this',
+  );
+  assert.notEqual(truncated.head, full.head, 'the head moved');
+});
+
+test('TRUNCATION is caught by the signed head -- only if it was published earlier', () => {
+  // The head signature was taken BEFORE the deletion. Nothing in the chain
+  // itself records that it was ever taken; that record is what an out-of-band
+  // publication provides, and it is the leg nobody has built in the fleet.
+  const full = build(log);
+  const sig = signHead(full.head, KEY);            // published yesterday
+  const kept = full.records.slice(0, -1);
+  const truncated = { prev: kept.at(-1).hash, records: kept, head: kept.at(-1).hash };
+
+  assert.equal(verify(truncated).ok, true, 'the chain is still self-consistent...');
+  assert.equal(verifyHead(truncated.head, sig, KEY), false, '...but the published head does not match');
+  assert.equal(verifyHead(full.head, sig, KEY), true, 'and the genuine head does');
 });
 
 test('domain separation: the PREFIXES differ, and the implementation uses them', () => {

@@ -19,6 +19,59 @@ head         = hash(n)
 signature    = HMAC-SHA256(0x03 || head)            under a key the log writer does not hold
 ```
 
+## Linkage class — a verdict MUST name which kind of log it is looking at
+
+**A chain and a row-checksum log are different objects, and the fleet has
+been calling both "witness".** A verdict that does not say which one it is
+looking at cannot be read. This section is normative: every verifier emits a
+linkage class, and the class determines which words the verdict may use.
+
+| linkage class | test | what it catches | what it CANNOT catch |
+|---|---|---|---|
+| `chain` | dense `seq` from 0 **and** replay reproduces every linkage | edit, reorder, drop-in-the-middle | truncation of the **tail**; a re-chained rewrite |
+| `row-checksum` | each row carries a hash of **its own payload only** | bit-rot, partial corruption | deletion, truncation, reordering — the rows do not commit to each other |
+| `none` | neither of the above | — | — |
+
+**Required output.** A verifier emits `linkage: 'chain' | 'row-checksum' | 'none'`
+alongside its verdict, and `linkage: 'none'` is a **reported category, not a
+silent skip** — a log with no linkage is refused with a reason, never passed over.
+
+**Why the distinction is load-bearing, measured.** The fleet's `bots/*/witness.log`
+files are named `witness`, carry a field called `hash`, and are described as
+witnessing. **0 of them carry a `prev` field.** The hash is a checksum of the
+row's own payload. Deleting 50 rows from `rsi-gan`'s 262 leaves 212 rows that
+still self-verify; the deletion is invisible. A row-checksum log is not a chain,
+and calling it one borrows the credibility of the idiom without the property.
+
+## Tamper-evidence — the three legs, and which ones you have
+
+The fleet says "tamper-evident" about logs that have one leg out of three.
+The honest claim is narrower and more precise; **narrowing a claim is the fix.**
+
+| # | leg | what it means |
+|---|---|---|
+| 1 | **chain re-derives** | replay reproduces every linkage; a rewrite is *expensive* |
+| 2 | **head signed** | the head is signed by a key we trust |
+| 3 | **head published out of band** | the signed head lives somewhere the log writer does not control |
+
+| legs held | the correct word |
+|---|---|
+| 1 only | **attestable** — "the chain re-derives" |
+| 1+2 | **attested** — "the chain re-derives and the head is signed" |
+| 1+2+3 | **tamper-evident** — and only then is the word earned |
+| 1, but no linkage | **row checksums match** — never "intact" |
+
+**A verifier MUST NOT use the word "tamper-evident" for a log whose head is not
+both signed and published out of band. A truncated chain is a shorter valid
+chain.** Tail-truncating a 121-record `witness-chain/1` log by 50 records still
+verifies, and the head simply changes to a value nobody holds a signature for.
+Leg 3 is the whole of the difference, and leg 3 is the leg nobody has built.
+
+**"intact" is not producible for a row-checksum log.** For a `chain`, the verdict
+may say **`chain-intact`** — the chain verified. For a `row-checksum` log it must
+say **`row checksums match`** and name the class, because a checksum set has no
+linkage to be intact *with respect to*.
+
 ## The three things this adds, and why each is needed
 
 ### 1. RFC 8785 (JCS) instead of a house convention
@@ -61,6 +114,15 @@ the demonstration is the point:
 > original.** The current ledger has no anchor, so it has no
 > tamper-evidence at all — the fleet's most-repeated idiom is its least
 > protected one.
+
+**Truncation is the same defect wearing a different hat, and it is worse,
+because it needs no competence at all.** An attacker who deletes the last 50
+records of a 121-record `witness-chain/1` log leaves 71 records that replay
+cleanly; `verify()` returns ok and the head simply moves. *A truncated chain
+is a shorter valid chain.* No rewrite, no re-hash, no fixpoint iteration —
+just deletion. This is why leg 3 (publication) is not a refinement of the
+anchor design but the whole of it: a signature over a head that lives inside
+the log it anchors is a signature the writer can refresh for free.
 
 The fix is the standard shape (Trillian's `LogWitness`): a periodic
 **signed tree head**, signed under a key the log writer does not hold. The
@@ -117,6 +179,14 @@ python3 ref/chain.py     # the twin
 - **A signed head detects a rewrite; it does not prevent one.** It bounds
   the damage to "the rewrite is visible", and only if the head is
   published somewhere the writer does not control.
+- **Nobody in the fleet has built the publication leg.** There is no
+  `witness-heads/` in any repo, and no committed `.sig`/`.pub` artifact
+  beside any log. `doubt-ledger` ships `sign_root()` (Ed25519, real, and
+  correctly refuses rather than degrading when `cryptography` is absent)
+  and `moth-ledger` ships an `Ed25519Signer`, but neither writes a signed
+  head to a place the log writer cannot reach. Until that exists, the
+  correct word for every fleet log is **attestable**, and the anchor is a
+  design on paper rather than a property in force.
 - **HMAC is a stand-in.** HMAC-SHA256 is symmetric — both parties hold the
   key, so it proves *someone with the key* wrote it, not *who*. Ed25519
   (as in Certificate Transparency, and as Trillian uses) attributes the
