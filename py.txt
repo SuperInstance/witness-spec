@@ -1,0 +1,6 @@
+{"a":2,"b":1}
+{"𐀀":1,"":2}
+{"x":1,"y":1.5,"z":0}
+{"s":"quote\" back\\ tab\t ctrl\u0001 slash/ é"}
+[1,"two",null,true,{"k":"v"}]
+{"nested":{"a":"x","b":[1,2]}}

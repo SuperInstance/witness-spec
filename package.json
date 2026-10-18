@@ -1,0 +1,17 @@
+{
+  "name": "witness-spec",
+  "version": "0.1.0",
+  "description": "The fleet witness log with RFC 8785 (JCS) canonicalisation, RFC 6962 domain separation, and a signed tree head -- the external anchor it never had.",
+  "type": "module",
+  "main": "./ref/chain.mjs",
+  "exports": {
+    ".": "./ref/chain.mjs",
+    "./jcs": "./ref/jcs.mjs"
+  },
+  "files": ["ref", "conformance", "SPEC.md", "README.md", "LICENSE"],
+  "scripts": { "test": "node test/all.mjs" },
+  "keywords": ["witness", "chain", "jcs", "rfc8785", "rfc6962", "tamper-evidence", "quilt"],
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/SuperInstance/witness-spec.git" },
+  "private": false
+}

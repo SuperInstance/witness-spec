@@ -1,0 +1,36 @@
+name: CI
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - run: node test/all.mjs
+      - name: the python twin must reproduce every vector byte for byte
+        run: |
+          cd ref && python3 - <<'PY'
+          import json, sys
+          sys.path.insert(0, '.')
+          from chain import append, verify, sign_head, verify_head, GENESIS
+          from jcs import canonicalize
+          v = json.load(open('../conformance/vectors.json'))
+          st = {'prev': GENESIS, 'records': []}
+          for vec in v['vectors']:
+              assert canonicalize(vec['record']) == vec['canonical'], 'canonical mismatch at ' + str(vec['record'].get('sid'))
+              st = append(st, vec['record'])
+              assert st['head'] == vec['hash'], 'chain hash mismatch at ' + str(vec['record'].get('sid'))
+          assert st['head'] == v['head'], 'head mismatch'
+          assert verify(st)['ok'], 'chain does not verify'
+          assert verify_head(st['head'], v['headSignature'], bytes.fromhex(v['key'])), 'signature does not verify'
+          print('python reproduced', len(v['vectors']), 'vectors byte for byte')
+          PY
