@@ -12,9 +12,14 @@ SPEC (the chain rule):
     head    = hash(n)
 
 Domain separation: 0x00 for a leaf, 0x01 for an interior node (RFC 6962
-2.1). A signed tree head is the EXTERNAL ANCHOR that makes the log
-tamper-evident; without one, a re-chained rewrite is indistinguishable from
-the original.
+2.1).
+
+WITHOUT an anchor a re-chained rewrite is indistinguishable from the
+original, and so is a truncation -- a truncated chain is a SHORTER VALID
+CHAIN. Signing a head makes a rewrite detectable; it makes a truncation
+detectable ONLY if the signed head is PUBLISHED where the log writer does
+not control it. A signature stored inside the log it anchors can be
+refreshed for free. So: two legs (signed + published out of band), not one.
 """
 import hashlib
 import hmac
