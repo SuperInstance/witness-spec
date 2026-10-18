@@ -1,6 +1,7 @@
-import { canonicalize } from '/tmp/ws/ref/jcs.mjs';
-import { append, leafHash, chainHash, signHead, GENESIS } from '/tmp/ws/ref/chain.mjs';
+import { canonicalize } from './ref/jcs.mjs';
+import { append, leafHash, chainHash, signHead, GENESIS } from './ref/chain.mjs';
 import { writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 const KEY = Buffer.from('a-key-the-log-writer-does-not-hold');
 const RECORDS = [
   { sid: 's1', seq: 1, ts: '2026-10-18T00:00:00Z', rel: 'BIND', refs: ['a'], meta: { n: 1, f: 1.0, neg: -0 } },
@@ -11,7 +12,7 @@ const RECORDS = [
 let st = { prev: GENESIS, records: [] };
 const chain = [];
 for (const r of RECORDS) { st = append(st, r); chain.push({ record: r, leaf: leafHash(r), hash: st.head }); }
-writeFileSync('/tmp/ws/conformance/vectors.json', JSON.stringify({
+writeFileSync(new URL('./conformance/vectors.json', import.meta.url), JSON.stringify({
   at: new Date().toISOString(),
   spec: 'witness-chain/1 -- JCS (RFC 8785) canonicalisation, RFC 6962 domain separation, SHA-256 chain, HMAC-SHA256 signed head',
   genesis: GENESIS,

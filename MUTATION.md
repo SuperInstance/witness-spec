@@ -23,7 +23,7 @@ a conformance suite.** These vectors come from the specification.
 |---|---|---|---|---|
 | `ref/jcs.mjs` | this repo | MATCH | ALL MATCH | MATCH |
 | `ref/jcs.py` | this repo | MATCH | **ALL 24 MATCH** (after the fix below) | MATCH |
-| `AI-Writings/labs/situation-recorder/recorder.py` | the fleet's reference witness | MATCH | ALL MATCH | MATCH |
+| `AI-Writings/labs/situation-recorder/recorder.py` | the fleet's reference witness | MATCH | **FAILED 10 of 24** — see below | MATCH |
 | `SuperInstance/quilt-claw/witness/ledger.js` | the JS twin | *(not yet ported)* | | |
 
 ## The mutation harness, and the hole it found
@@ -90,7 +90,7 @@ of its own findings were real.
 ## Running it
 
 ```bash
-node --test "test/*.test.mjs"     # 11 tests
+node --test "test/*.test.mjs"     # 15 tests
 tools/mutate.sh                   # every mutation must be caught
 ```
 
